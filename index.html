@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Äd daj lång och grann by Norrtou</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #222;
+            font-family: Arial, sans-serif;
+            color: white;
+        }
+        h1 {
+            margin-top: 0;
+        }
+        canvas {
+            border: 2px solid white;
+            background-color: #000;
+            margin: 20px 0;
+            image-rendering: pixelated;
+        }
+        .score {
+            font-size: 24px;
+            margin: 10px 0;
+        }
+        .game-over {
+            font-size: 20px;
+            color: #ff4444;
+            margin: 10px 0;
+        }
+        .controls {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 14px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+    <h1>Äd daj lång och grann</h1>
+    <div class="score">Poäng: <span id="score">0</span></div>
+    <canvas id="gameCanvas" width="400" height="200"></canvas>
+    <div id="gameOverMsg" class="game-over" style="display: none;">Game Over! Press R to Restart</div>
+    <div class="controls">
+        <p>Jaga prickar med WASD din jävla fubbick</p>
+        <p>Det finns ingen poäng eller ände. Ät dig till döds.</p>
+    </div>
+
+    <script type="module">
+        import init from './game.js';
+
+        let game;
+        let gameLoopInterval;
+        const CELL_SIZE = 10;
+        const WIDTH = 40;
+        const HEIGHT = 20;
+
+        async function main() {
+            game = await init();
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+
+            // Initialize the game
+            game._initGame();
+
+            // Keyboard controls
+            const keys = {};
+            window.addEventListener('keydown', (e) => {
+                keys[e.key] = true;
+                if (e.key === 'r' || e.key === 'R') {
+                    restartGame();
+                }
+            });
+            window.addEventListener('keyup', (e) => {
+                keys[e.key] = false;
+            });
+
+            function restartGame() {
+                clearInterval(gameLoopInterval);
+                game._initGame();
+                document.getElementById('gameOverMsg').style.display = 'none';
+                startGameLoop();
+            }
+
+            function updateInput() {
+                if (keys['w'] || keys['ArrowUp']) game._setDirection(0, -1);
+                else if (keys['s'] || keys['ArrowDown']) game._setDirection(0, 1);
+                else if (keys['a'] || keys['ArrowLeft']) game._setDirection(-1, 0);
+                else if (keys['d'] || keys['ArrowRight']) game._setDirection(1, 0);
+            }
+
+            function render() {
+                // Clear canvas
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Draw grid (optional)
+                ctx.strokeStyle = '#111';
+                ctx.lineWidth = 0.5;
+                for (let x = 0; x <= WIDTH; x++) {
+                    ctx.beginPath();
+                    ctx.moveTo(x * CELL_SIZE, 0);
+                    ctx.lineTo(x * CELL_SIZE, canvas.height);
+                    ctx.stroke();
+                }
+                for (let y = 0; y <= HEIGHT; y++) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y * CELL_SIZE);
+                    ctx.lineTo(canvas.width, y * CELL_SIZE);
+                    ctx.stroke();
+                }
+
+                // Draw food
+                const foodX = game._getFoodX();
+                const foodY = game._getFoodY();
+                ctx.fillStyle = '#ff6b6b';
+                ctx.fillRect(foodX * CELL_SIZE + 1, foodY * CELL_SIZE + 1, CELL_SIZE - 2, CELL_SIZE - 2);
+
+                // Draw worm
+                const wormLength = game._getWormLength();
+                for (let i = 0; i < wormLength; i++) {
+                    const x = game._getWormX(i);
+                    const y = game._getWormY(i);
+                    if (i === 0) {
+                        ctx.fillStyle = '#4caf50';
+                    } else {
+                        ctx.fillStyle = '#66bb6a';
+                    }
+                    ctx.fillRect(x * CELL_SIZE + 1, y * CELL_SIZE + 1, CELL_SIZE - 2, CELL_SIZE - 2);
+                }
+
+                // Update score display
+                document.getElementById('score').textContent = game._getScore();
+
+                // Check if game is over
+                if (game._isGameOver()) {
+                    document.getElementById('gameOverMsg').style.display = 'block';
+                    clearInterval(gameLoopInterval);
+                }
+            }
+
+            function gameLoop() {
+                updateInput();
+                game._updateGame();
+                render();
+            }
+
+            function startGameLoop() {
+                gameLoopInterval = setInterval(gameLoop, 100);
+            }
+
+            startGameLoop();
+        }
+
+        main().catch(console.error);
+    </script>
+</body>
+</html>
